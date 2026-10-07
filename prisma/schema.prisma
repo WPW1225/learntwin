@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../db/custom.db"
+}
+
+model User {
+  id             String             @id @default(cuid())
+  username       String             @unique
+  passwordHash   String
+  role           String             @default("student") // student | parent | demo
+  createdAt      DateTime           @default(now())
+  assignments    Assignment[]
+  misconceptions Misconception[]
+  attempts       PracticeAttempt[]
+}
+
+model Assignment {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imagePath       String
+  filename        String        @default("assignment")
+  status          String        @default("extracting") // extracting | confirm | diagnosing | done | error
+  stage           String        @default("")
+  subject         String?
+  gradeLevel      String?
+  legibilityNotes String?
+  twinSummary     String?
+  patternsObserved String?
+  score           Int?          // wrong count
+  total           Int?          // problem count
+  createdAt       DateTime      @default(now())
+  problems        Problem[]
+  practiceItems   PracticeItem[]
+  misconceptions  Misconception[] @relation("AssignmentMisconceptions")
+}
+
+model Problem {
+  id             String     @id @default(cuid())
+  assignmentId   String
+  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  number         Int
+  question       String
+  studentAnswer  String?
+  readConfidence String     @default("high") // high | medium | low | none
+  altReading     String?
+  confirmedAnswer String? // student-confirmed / corrected reading
+  isCorrect      Boolean    @default(false)
+  correctAnswer  String?
+  concepts       String     @default("[]") // JSON array
+  errorType      String?
+}
+
+model Misconception {
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key               String // topic_tree path, stable identity
+  name              String
+  explanationStudent String         @default("")
+  explanationParent String         @default("")
+  severity          String         @default("medium")
+  topicTree         String         @default("[]") // JSON array
+  occurrences       Int             @default(1)
+  mastery           Int             @default(35) // 5..95
+  evidence          String         @default("[]") // JSON [{assignmentId, at}]
+  firstSeenAt       DateTime        @default(now())
+  lastSeenAt        DateTime        @default(now())
+  practiceItems     PracticeItem[]
+  assignments       Assignment[]    @relation("AssignmentMisconceptions")
+}
+
+model PracticeItem {
+  id              String          @id @default(cuid())
+  assignmentId    String
+  assignment      Assignment      @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  misconceptionId String
+  misconception   Misconception   @relation(fields: [misconceptionId], references: [id], onDelete: Cascade)
+  question        String
+  options         String // JSON array of 4
+  correctIndex    Int
+  explanation     String
+  targets         String
+  order           Int             @default(0)
+  attempts        PracticeAttempt[]
+}
+
+model PracticeAttempt {
+  id             String        @id @default(cuid())
+  practiceItemId String
+  practiceItem   PracticeItem  @relation(fields: [practiceItemId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  selectedIndex   Int
+  isCorrect      Boolean
+  createdAt      DateTime      @default(now())
+}

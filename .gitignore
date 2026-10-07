@@ -1,0 +1,45 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+.next/
+out/
+build/
+dist/
+
+# database (contains user data — NEVER commit)
+db/
+*.db
+*.db-journal
+
+# env & secrets
+.env
+.env.local
+.env*.local
+*.pem
+
+# runtime artifacts
+dev.log
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# user uploads at runtime
+public/uploads/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel
