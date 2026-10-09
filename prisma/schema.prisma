@@ -23,6 +23,7 @@ model Assignment {
   userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   imagePath       String
+  imageData       String? // data URI (serverless-safe image storage; local file is a dev cache)
   filename        String        @default("assignment")
   status          String        @default("extracting") // extracting | confirm | diagnosing | done | error
   stage           String        @default("")

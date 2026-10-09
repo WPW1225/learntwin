@@ -67,7 +67,7 @@ photo → upload → [VLM extract + salvage parser]
                   → Learning Twin (persists misconceptions across assignments)
 ```
 
-**Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma + SQLite · z-ai-web-dev-sdk (VLM + LLM)
+**Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS 4 · Prisma (SQLite dev / Postgres prod) · Zhipu GLM-4V + GLM-4 via standard API
 
 **Data model:** `User → Assignment → Problem / Misconception ↔ PracticeItem → PracticeAttempt` — the Twin is the Misconception table keyed by pattern (`key`), so a pattern diagnosed in week 1 recurs in week 5's report with its full history.
 
@@ -81,6 +81,23 @@ npm run dev                   # http://localhost:3000
 ```
 
 Register with any name + 4-char password. Use **"Try a sample assignment"** on the upload screen for an instant end-to-end run with a built-in demo photo.
+
+## Deploy (Vercel, free tier)
+
+The app is serverless-ready: LLM calls go through the standard Zhipu API (`ZHIPU_API_KEY`), and uploaded photos live in the database (no writable disk needed).
+
+1. **Get an API key** — sign up at [open.bigmodel.cn](https://open.bigmodel.cn), create an API key (free `glm-4v-flash` / `glm-4-flash` models are used by default; new accounts get a free token grant)
+2. **Import the repo** — [vercel.com/new](https://vercel.com/new) → import `WPW1225/learntwin` (sign in with GitHub)
+3. **Create the database** — in the project page: **Storage → Create Database → Neon → Create** (free tier; `DATABASE_URL` is injected automatically)
+4. **Set env vars** — **Settings → Environment Variables**:
+   | Name | Value |
+   |---|---|
+   | `ZHIPU_API_KEY` | your key from step 1 |
+   | `AUTH_SECRET` | any long random string (30+ chars of gibberish) |
+5. **Set build command** — **Settings → General → Build Command**: `bash scripts/build-vercel.sh`
+6. **Deploy** — hit **Deploy**. First build creates the tables via `prisma db push`; subsequent builds are no-ops.
+
+Done: you get a `https://learntwin.vercel.app` URL that works on any phone, anywhere.
 
 ## Roadmap
 

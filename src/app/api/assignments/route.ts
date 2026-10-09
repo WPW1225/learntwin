@@ -42,10 +42,12 @@ export async function POST(req: Request) {
   // normalize + compress for vision call (max edge 1800, jpeg q85)
   const norm = await sharp(imageBuf).rotate().resize(1800, 1800, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer()
   const stored = `upload-${id}.jpg`
-  await writeFile(path.join(UPLOAD_DIR, stored), norm)
+  const dataUri = `data:image/jpeg;base64,${norm.toString('base64')}`
+  // serverless-safe: image lives in the DB; file write is a local-dev cache only
+  try { await writeFile(path.join(UPLOAD_DIR, stored), norm) } catch { /* read-only fs (Vercel) — DB copy is the source of truth */ }
 
   const assignment = await db.assignment.create({
-    data: { userId: uid, imagePath: `/uploads/${stored}`, filename, status: 'extracting', stage: 'Reading the assignment…' },
+    data: { userId: uid, imagePath: `/uploads/${stored}`, filename, status: 'extracting', stage: 'Reading the assignment…', imageData: dataUri },
   })
 
   // fire-and-forget; progress is tracked in the DB

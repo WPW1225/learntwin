@@ -6,7 +6,6 @@
 // State machine lives in the DB (Assignment.status): extracting -> confirm ->
 // diagnosing -> done | error. Poll GET /api/assignments/[id] for progress.
 
-import ZAI from 'z-ai-web-dev-sdk'
 import path from 'node:path'
 import { db } from '@/lib/db'
 import { salvageJson } from './salvage'
@@ -14,36 +13,17 @@ import { verifyProblems } from './mathVerify'
 import { gateItem, PracticeItem } from './gate'
 import { EXTRACT_PROMPT, DIAGNOSE_PROMPT, practicePrompt } from './prompts'
 import { updateTwin, findOrCreateMisconception } from './twin'
-
-let zaiPromise: Promise<Awaited<ReturnType<typeof ZAI.create>>> | null = null
-async function zai() {
-  if (!zaiPromise) zaiPromise = ZAI.create()
-  return zaiPromise
-}
+import { chatText, chatVision } from './llm'
 
 async function callJson(prompt: string, imageBase64?: string, retries = 2): Promise<any> {
   let p = prompt
   let lastErr = ''
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const client = await zai()
     let content: string
     if (imageBase64) {
-      const res = await client.chat.completions.createVision({
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: p },
-            { type: 'image_url', image_url: { url: `data:image/png;base64,${imageBase64}` } },
-          ],
-        }],
-        thinking: { type: 'disabled' },
-      })
-      content = res.choices[0]?.message?.content || ''
+      content = await chatVision(p, imageBase64)
     } else {
-      const res = await client.chat.completions.create({
-        messages: [{ role: 'user', content: p }],
-      })
-      content = res.choices[0]?.message?.content || ''
+      content = await chatText(p)
     }
     const data = salvageJson(content)
     if (data !== null && data !== undefined) return data
@@ -59,8 +39,15 @@ export async function runExtract(assignmentId: string) {
   if (!a) return
   try {
     await db.assignment.update({ where: { id: assignmentId }, data: { status: 'extracting', stage: 'Reading the assignment…' } })
-    const abs = path.join(process.cwd(), 'public', a.imagePath)
-    const b64 = (await import('node:fs')).readFileSync(abs).toString('base64')
+    // image source: DB-embedded (serverless-safe) first, then local file (dev/demo)
+    let b64: string
+    const dataUri = (a as any).imageData
+    if (dataUri) {
+      b64 = dataUri.replace(/^data:image\/\w+;base64,/, '')
+    } else {
+      const abs = path.join(process.cwd(), 'public', a.imagePath)
+      b64 = (await import('node:fs')).readFileSync(abs).toString('base64')
+    }
     const ext = await callJson(EXTRACT_PROMPT, b64)
 
     let problems = (ext.problems || []).map((p: any, i: number) => ({

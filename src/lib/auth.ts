@@ -7,6 +7,9 @@ import { db } from '@/lib/db'
 const SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'learntwin-dev-secret-change-me-in-prod'
 )
+if (process.env.NODE_ENV === 'production' && !process.env.AUTH_SECRET) {
+  console.error('⚠️  AUTH_SECRET is not set in production! Tokens are signed with a PUBLIC fallback — set it in your Vercel env settings.')
+}
 const DAY = 60 * 60 * 24
 
 export function hashPassword(password: string): string {
